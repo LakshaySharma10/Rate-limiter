@@ -8,19 +8,19 @@ const redisClient = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN, 
 });
 
-const WINDOW_SIZE = 60 * 1000; 
-const MAX_REQUESTS = 10;
+const Window_size = process.env.WINDOW_SIZE;
+const Max_Requests = process.env.MAX_REQUESTS;
 
 export async function rateLimiter(req, res, next) {
   const ip = req.ip;
   const now = Date.now();
 
   try {
-    await redisClient.zremrangebyscore(ip, 0, now - WINDOW_SIZE);
+    await redisClient.zremrangebyscore(ip, 0, now - Window_size);
 
     const count = await redisClient.zcard(ip);
 
-    if (count >= MAX_REQUESTS) {
+    if (count >= Max_Requests) {
       return res.status(429).json({
         error: "Too many requests.",
       });
@@ -28,7 +28,7 @@ export async function rateLimiter(req, res, next) {
 
     await redisClient.zadd(ip, { score: now, member: now.toString() });
 
-    await redisClient.expire(ip, WINDOW_SIZE / 1000);
+    await redisClient.expire(ip, Window_size / 1000);
 
     next();
   } catch (err) {
